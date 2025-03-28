@@ -1,12 +1,15 @@
 package com.isil.wardia
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.SyncStateContract.Columns
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -42,6 +47,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -63,16 +69,51 @@ import androidx.core.content.ContextCompat
 import com.isil.wardia.ui.theme.WardIATheme
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.PathEffect
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 
 class AdministracionActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        fun getOrCreateUserId(context: Context): String {
+            val sharedPref = context.getSharedPreferences("wardia_prefs", Context.MODE_PRIVATE)
+            var userId = sharedPref.getString("user_id", null)
+
+            if (userId == null) {
+                userId = java.util.UUID.randomUUID().toString()
+                sharedPref.edit().putString("user_id", userId).apply()
+            }
+
+            return userId
+        }
         super.onCreate(savedInstanceState)
         setContent {
+
+            val ahorroCards = remember { mutableStateListOf<AhorroItem>() }
+            val userId = getOrCreateUserId(this) // Reutiliza la misma función que usaste en el chat
+
+            LaunchedEffect(Unit) {
+                RetrofitClient.api.getAhorros(userId).enqueue(object : Callback<List<AhorroItem>> {
+                    override fun onResponse(call: Call<List<AhorroItem>>, response: Response<List<AhorroItem>>) {
+                        if (response.isSuccessful) {
+                            val lista = response.body() ?: emptyList()
+                            ahorroCards.clear()
+                            ahorroCards.addAll(lista)
+                        }
+                    }
+
+                    override fun onFailure(call: Call<List<AhorroItem>>, t: Throwable) {
+                        Log.e("Ahorros", "Error: ${t.localizedMessage}")
+                    }
+                })
+            }
+
+
             WardIATheme {
 
-                val ahorroCards = listOf("Universidad","Casa", "Carro")
+
                 Scaffold(modifier = Modifier.fillMaxSize(),
 
                     topBar = {
@@ -204,7 +245,11 @@ class AdministracionActivity : ComponentActivity() {
 
 
                             }
-                            Column (modifier = Modifier.padding(horizontal = 20.dp) ){
+                            Column (modifier = Modifier.padding(horizontal = 20.dp)
+                                .fillMaxHeight(),
+                                verticalArrangement = Arrangement.Top
+
+                            ){
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.End
@@ -277,13 +322,13 @@ class AdministracionActivity : ComponentActivity() {
                                 LazyVerticalGrid(
                                     columns = GridCells.Fixed(2),
                                     modifier = Modifier
-                                        .fillMaxSize()
+                                        .weight(1f)
                                         .padding(top = 10.dp, bottom = 10.dp),
                                     verticalArrangement = Arrangement.spacedBy(10.dp),
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                     content = {
-                                        items(ahorroCards.size) { index ->
-                                            CardWuardadito(title = ahorroCards[index])
+                                        items(ahorroCards) { ahorro ->
+                                            CardWuardadito(item = ahorro, ahorroCards = ahorroCards)
                                         }
 
                                         item {
@@ -301,7 +346,7 @@ class AdministracionActivity : ComponentActivity() {
 }
 
 @Composable
-fun CardWuardadito(title: String) {
+fun CardWuardadito(item: AhorroItem, ahorroCards: MutableList<AhorroItem>) {
     Box(
         modifier = Modifier
             .padding(4.dp)
@@ -311,10 +356,13 @@ fun CardWuardadito(title: String) {
             .border(0.65.dp, Color.Black.copy(alpha = 0.1f), shape = RoundedCornerShape(24.dp))
 
     ) {
+        val scrollState = remember { ScrollState(0) }
+
         Column(
             modifier = Modifier
                 .padding(12.dp)
                 .fillMaxSize()
+                .verticalScroll(scrollState)
         ) {
             Row (
                 modifier = Modifier.fillMaxWidth(),
@@ -333,22 +381,35 @@ fun CardWuardadito(title: String) {
                         modifier = Modifier.size(24.dp)
                     )
                 }
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Cerrar",
-                    tint = Color.LightGray,
-                    modifier = Modifier.size(18.dp)
-                )
+                IconButton(onClick = {
+                    ahorroCards.remove(item)
+                }) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cerrar",
+                        tint = Color.LightGray,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
             Text(
-                text = title,
+                text = item.meta,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colorResource(id = R.color.oAzul),
                 fontFamily = FontFamily(Font(R.font.beauti)),
                 modifier = Modifier.padding(top = 6.dp)
             )
+
+
+            val progress = if (item.total_meta > 0) {
+                (item.total_actual.toFloat() / item.total_meta.toFloat()).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+
+
             Box(
                 modifier = Modifier.fillMaxWidth()
                     .height(6.dp)
@@ -356,13 +417,13 @@ fun CardWuardadito(title: String) {
             ){
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.4f) // ← Aquí tú puedes controlar el porcentaje de llenado
+                        .fillMaxWidth(progress) // ← Aquí tú puedes controlar el porcentaje de llenado
                         .height(6.dp)
                         .background(Color(0xFF3A71F5), shape = RoundedCornerShape(50)) // azul fuerte
                 )
             }
             Text(
-                text = "S/.0",
+                text = "S/.${item.total_actual}",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = colorResource(id = R.color.oAzul),

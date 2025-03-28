@@ -1,5 +1,6 @@
 package com.isil.wardia
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -53,6 +54,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.isil.wardia.ui.theme.WardIATheme
 import androidx.compose.foundation.layout.heightIn
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import android.util.Log
+
 
 
 data class ChatMensaje(
@@ -63,15 +69,24 @@ data class ChatMensaje(
 class chatActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        fun getOrCreateUserId(context: Context): String {
+            val sharedPref = context.getSharedPreferences("wardia_prefs", Context.MODE_PRIVATE)
+            var userId = sharedPref.getString("user_id", null)
+
+            if (userId == null) {
+                userId = java.util.UUID.randomUUID().toString()
+                sharedPref.edit().putString("user_id", userId).apply()
+            }
+
+            return userId
+        }
         super.onCreate(savedInstanceState)
+        val userId = getOrCreateUserId(this)
         setContent {
             WardIATheme {
                 val mensajes = remember {
                     mutableStateListOf(
-                        ChatMensaje("Tengo un sueldo fijo pero no sé cómo ahorrar.", true),
-                        ChatMensaje("¡Claro! Cuéntame un poco más de ti.", false),
-                        ChatMensaje("Deseo tener una casa, un carro, pero mi prioridad es ahorrar para la mensualidad de mi universidad", true),
-                        ChatMensaje("Analizando tus ingresos, crearemos unos bloques de ahorro donde la prioridad será la mensualidad de tu universidad", false)
+                        ChatMensaje("Bienvenido a WardIA, ¿en qué puedo ayudarte?", false)
                     )
                 }
                 Scaffold(modifier = Modifier.fillMaxSize(),
@@ -172,7 +187,43 @@ class chatActivity : ComponentActivity() {
                                     )
 
                                     IconButton(
-                                        onClick = { /*TODO*/ },
+                                        onClick = {
+                                            if(mensajeUsuario.isNotBlank()){
+                                                val mensajeParaApi = mensajeUsuario
+                                                mensajes.add(0, ChatMensaje(mensajeParaApi, true))
+                                                mensajeUsuario = ""
+
+                                                val request = ChatRequest(
+                                                    user_id = userId,
+                                                    message = mensajeParaApi
+                                                )
+
+                                                val call = RetrofitClient.api.sendMessage(request)
+
+                                                call.enqueue(object : Callback<ChatResponse> {
+
+                                                    override fun onResponse(call: Call<ChatResponse>, response: Response<ChatResponse>) {
+                                                        if (response.isSuccessful) {
+                                                            val respuesta = response.body()?.response ?: "Respuesta vacía"
+                                                            mensajes.add(0, ChatMensaje(respuesta, false))
+                                                        } else {
+                                                            mensajes.add(0, ChatMensaje("Error del servidor: ${response.code()}", false))
+                                                        }
+                                                    }
+
+                                                    override fun onFailure(
+                                                        call: Call<ChatResponse>,
+                                                        t: Throwable
+                                                    ) {
+                                                        Log.e("ChatError", "Error: ${t.localizedMessage}", t)
+                                                        mensajes.add(0, ChatMensaje("No se pudo conectar al servidor", false))
+                                                    }
+
+                                                })
+
+                                            }
+
+                                        },
                                         modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(
