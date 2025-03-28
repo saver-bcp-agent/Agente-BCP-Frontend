@@ -2,11 +2,13 @@ package com.isil.wardia
 
 import android.content.Intent
 import android.os.Bundle
+import android.provider.SyncStateContract.Columns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +20,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -42,18 +47,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.isil.wardia.ui.theme.WardIATheme
 import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.PathEffect
+
 
 class AdministracionActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -62,6 +72,7 @@ class AdministracionActivity : ComponentActivity() {
         setContent {
             WardIATheme {
 
+                val ahorroCards = listOf("Universidad","Casa", "Carro")
                 Scaffold(modifier = Modifier.fillMaxSize(),
 
                     topBar = {
@@ -261,13 +272,159 @@ class AdministracionActivity : ComponentActivity() {
                                         }
 
                                     }//row de botones
-                                }
+                                }//row contenedo de botones
 
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(top = 10.dp, bottom = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    content = {
+                                        items(ahorroCards.size) { index ->
+                                            CardWuardadito(title = ahorroCards[index])
+                                        }
+
+                                        item {
+                                        CardCrearWuardadito()
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun CardWuardadito(title: String) {
+    Box(
+        modifier = Modifier
+            .padding(4.dp)
+            .background(Color.White, shape = RoundedCornerShape(20.dp))
+            .height(160.dp)
+            .fillMaxWidth()
+            .border(0.65.dp, Color.Black.copy(alpha = 0.1f), shape = RoundedCornerShape(24.dp))
+
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxSize()
+        ) {
+            Row (
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ){
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(color = Color(0xFF3A71F5), shape = RoundedCornerShape(50)),
+                    contentAlignment = Alignment.Center
+                ){
+                    Icon(
+                        painter = painterResource(id = R.drawable.ahorro),
+                        contentDescription = "ahorro",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Cerrar",
+                    tint = Color.LightGray,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colorResource(id = R.color.oAzul),
+                fontFamily = FontFamily(Font(R.font.beauti)),
+                modifier = Modifier.padding(top = 6.dp)
+            )
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .height(6.dp)
+                    .background(Color(0x80002A8E), shape = RoundedCornerShape(50))
+            ){
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.4f) // ← Aquí tú puedes controlar el porcentaje de llenado
+                        .height(6.dp)
+                        .background(Color(0xFF3A71F5), shape = RoundedCornerShape(50)) // azul fuerte
+                )
+            }
+            Text(
+                text = "S/.0",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colorResource(id = R.color.oAzul),
+                fontFamily = FontFamily(Font(R.font.beauti))
+            )
+
+            Text(
+                text = "Total ahorrado",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal,
+                color = Color.Black.copy(alpha = 0.5f),
+                fontFamily = FontFamily(Font(R.font.beauti))
+            )
+
+        }
+    }
+}
+
+@Composable
+fun CardCrearWuardadito() {
+    Box(
+        modifier = Modifier
+            .padding(4.dp)
+            .height(160.dp)
+            .fillMaxWidth()
+            .background(Color.Transparent)
+            .drawBehind {
+                val strokeWidth = 2.dp.toPx()
+                val pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                drawRoundRect(
+                    color = Color.Gray,
+                    size = size,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = strokeWidth,
+                        pathEffect = pathEffect
+                    ),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(24.dp.toPx())
+                )
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.smile),
+                contentDescription = "Agregar",
+                tint = Color.Gray,
+                modifier = Modifier.size(30.dp)
+            )
+            Text(
+                text = "¡Crea wuardaditos\nmanualmente o con IA!",
+                fontSize = 11.sp,
+                color = Color.Gray,
+                lineHeight = 16.sp,
+                textAlign = TextAlign.Center,
+                fontFamily = FontFamily(Font(R.font.beauti)),
+                modifier = Modifier.padding(top = 6.dp)
+            )
         }
     }
 }
